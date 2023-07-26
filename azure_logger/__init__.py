@@ -4,15 +4,26 @@ from azure.storage.blob import ContainerClient
 
 
 class AzureAppendBlobHandler(Handler):
-    def __init__(self, container_client: ContainerClient, path: str):
+    def __init__(
+        self,
+        formatter: Formatter,
+        container_client: ContainerClient,
+        path: str,
+        overwrite: bool = False,
+    ):
         super().__init__()
 
+        self.formatter = formatter
+
         self._blob_client = container_client.get_blob_client(path)
-        if not self._blob_client.exists():
+        if not self._blob_client.exists() or overwrite:
             self._blob_client.create_append_blob()
 
     def emit(self, data):
-        self._blob_client.append_block(self.format(data))
+        self.write(self.format(data))
+
+    def write(self, data):
+        self._blob_client.append_block(data)
 
 
 class CsvFormatter(Formatter):
@@ -27,7 +38,7 @@ class CsvFormatter(Formatter):
 
     def format(self, record):
         record.msg = self.format_msg(record.msg)
-        return Formatter.format(self, record)
+        return super().format(record)
 
 
 class CsvLogger(Logger):
@@ -36,13 +47,18 @@ class CsvLogger(Logger):
         name: str,
         container_client: ContainerClient,
         path: str,
-        header=None,
+        header: str = None,
+        fmt: str = "%(asctime)s | %(message)s\n",
+        datefmt: str = "%Y-%m-%d %H:%M:%S",
     ):
         super().__init__(name)
 
-        if header and isinstance(header, str):
-            header = header.split(",")
-        self.header = header
+        formatter = CsvFormatter(fmt, datefmt, delimiter="|")
+        handler = AzureAppendBlobHandler(
+            formatter, container_client, path, overwrite=True
+        )
 
-        handler = AzureAppendBlobHandler(container_client, path)
         self.addHandler(handler)
+
+        if header:
+            handler.write(header)
