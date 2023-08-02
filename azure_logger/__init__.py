@@ -1,4 +1,5 @@
 from logging import Formatter, Handler, Logger
+from typing import Union
 
 from azure.storage.blob import ContainerClient
 
@@ -47,7 +48,8 @@ class CsvLogger(Logger):
         name: str,
         container_client: ContainerClient,
         path: str,
-        header: str = None,
+        overwrite: bool = True,
+        header: Union[str, None] = None,
         fmt: str = "%(asctime)s | %(message)s\n",
         datefmt: str = "%Y-%m-%d %H:%M:%S",
     ):
@@ -55,7 +57,7 @@ class CsvLogger(Logger):
 
         formatter = CsvFormatter(fmt, datefmt, delimiter="|")
         handler = AzureAppendBlobHandler(
-            formatter, container_client, path, overwrite=True
+            formatter, container_client, path, overwrite=overwrite
         )
 
         self.addHandler(handler)
