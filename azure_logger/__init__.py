@@ -56,11 +56,12 @@ class CsvLogger(Logger):
         super().__init__(name)
 
         formatter = CsvFormatter(fmt, datefmt, delimiter="|")
+        appending = container_client.get_blob_client(path).exists() and not overwrite
         handler = AzureAppendBlobHandler(
             formatter, container_client, path, overwrite=overwrite
         )
 
         self.addHandler(handler)
 
-        if header:
+        if header and not appending:
             handler.write(header)
