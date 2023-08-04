@@ -2,6 +2,7 @@ from logging import Formatter, Handler, Logger
 from typing import Union
 
 from azure.storage.blob import ContainerClient
+import pandas as pd
 
 
 class AzureAppendBlobHandler(Handler):
@@ -50,12 +51,17 @@ class CsvLogger(Logger):
         path: str,
         overwrite: bool = True,
         header: Union[str, None] = None,
-        fmt: str = "%(asctime)s | %(message)s\n",
+        fmt: str = "%(asctime)s|%(message)s\n",
         datefmt: str = "%Y-%m-%d %H:%M:%S",
+        delimiter: str = "|",
     ):
         super().__init__(name)
 
-        formatter = CsvFormatter(fmt, datefmt, delimiter="|")
+        self.container_client = container_client
+        self.delimiter = delimiter
+        self.path = path
+
+        formatter = CsvFormatter(fmt, datefmt, delimiter=delimiter)
         appending = container_client.get_blob_client(path).exists() and not overwrite
         handler = AzureAppendBlobHandler(
             formatter, container_client, path, overwrite=overwrite
@@ -65,3 +71,7 @@ class CsvLogger(Logger):
 
         if header and not appending:
             handler.write(header)
+
+    def parse_log(self) -> pd.DataFrame:
+        blob_client = self.container_client.get_blob_client(self.path)
+        return pd.read_csv(blob_client.url, sep=self.delimiter, skipinitialspace=True)
