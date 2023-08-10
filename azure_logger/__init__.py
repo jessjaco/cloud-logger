@@ -1,3 +1,4 @@
+from ast import literal_eval
 from logging import Formatter, Handler, Logger
 from typing import Union
 
@@ -75,3 +76,28 @@ class CsvLogger(Logger):
     def parse_log(self) -> pd.DataFrame:
         blob_client = self.container_client.get_blob_client(self.path)
         return pd.read_csv(blob_client.url, sep=self.delimiter, skipinitialspace=True)
+
+    def filter_by_log(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Need to decide if this is where we do this. I want to keep the logger
+        # fairly generic. Suppose we could subclass it.
+        log = self.parse_log().set_index("index")
+        log.index = [literal_eval(i) for i in log.index]
+
+        # Need to filter by errors
+
+        return df[~df.index.isin(log.index)]
+
+
+def get_log_path(prefix: str, dataset_id: str, version: str, datetime: str) -> str:
+    return f"{prefix}/{dataset_id}/logs/{dataset_id}_{version}_{datetime.replace('/', '_')}_log.csv"
+
+
+def filter_by_log(df: pd.DataFrame, log: pd.DataFrame) -> pd.DataFrame:
+    # Need to decide if this is where we do this. I want to keep the logger
+    # fairly generic. Suppose we could subclass it.
+    log = log.set_index("index")
+    log.index = [literal_eval(i) for i in log.index]
+
+    # Need to filter by errors
+
+    return df[~df.index.isin(log.index)]
