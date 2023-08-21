@@ -88,8 +88,15 @@ class CsvLogger(Logger):
         return df[~df.index.isin(log.index)]
 
 
-def get_log_path(prefix: str, dataset_id: str, version: str, datetime: str) -> str:
-    return f"{prefix}/{dataset_id}/logs/{dataset_id}_{version}_{datetime.replace('/', '_')}_log.csv"
+def get_log_path(
+    prefix: str, dataset_id: str, version: str, datetime: str = None
+) -> str:
+    folder = f"{prefix}/{dataset_id}/logs"
+    return (
+        f"{folder}/{dataset_id}_{version}_{datetime.replace('/', '_')}_log.csv"
+        if datetime is not None
+        else f"{folder}/{dataset_id}_{version}_log.csv"
+    )
 
 
 def filter_by_log(df: pd.DataFrame, log: pd.DataFrame) -> pd.DataFrame:
