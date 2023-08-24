@@ -1,5 +1,7 @@
+import sys
+
 from ast import literal_eval
-from logging import Formatter, Handler, Logger
+from logging import Formatter, Handler, Logger, StreamHandler, DEBUG
 from typing import Union
 
 from azure.storage.blob import ContainerClient
@@ -68,8 +70,13 @@ class CsvLogger(Logger):
             formatter, container_client, path, overwrite=overwrite
         )
 
-        self.addHandler(handler)
-
+        #        self.addHandler(handler)
+        #
+        #        consoleHandler = StreamHandler(sys.stdout)
+        #        consoleHandler.setFormatter(formatter)
+        #        self.addHandler(consoleHandler)
+        #
+        #        self.setLevel(DEBUG)
         if header and not appending:
             handler.write(header)
 
@@ -86,17 +93,6 @@ class CsvLogger(Logger):
         # Need to filter by errors
 
         return df[~df.index.isin(log.index)]
-
-
-def get_log_path(
-    prefix: str, dataset_id: str, version: str, datetime: str = None
-) -> str:
-    folder = f"{prefix}/{dataset_id}/logs"
-    return (
-        f"{folder}/{dataset_id}_{version}_{datetime.replace('/', '_')}_log.csv"
-        if datetime is not None
-        else f"{folder}/{dataset_id}_{version}_log.csv"
-    )
 
 
 def filter_by_log(df: pd.DataFrame, log: pd.DataFrame) -> pd.DataFrame:
