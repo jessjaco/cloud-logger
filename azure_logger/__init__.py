@@ -95,12 +95,18 @@ class CsvLogger(Logger):
         return df[~df.index.isin(log.index)]
 
 
-def filter_by_log(df: pd.DataFrame, log: pd.DataFrame) -> pd.DataFrame:
+def filter_by_log(
+    df: pd.DataFrame, log: pd.DataFrame, retry_errors: bool = True
+) -> pd.DataFrame:
     # Need to decide if this is where we do this. I want to keep the logger
     # fairly generic. Suppose we could subclass it.
     log = log.set_index("index")
     log.index = [literal_eval(i) for i in log.index]
 
-    # Need to filter by errors
+    task_bool = df.index.isin(log.index)
 
-    return df[~df.index.isin(log.index)]
+    if retry_errors:
+        completes = log.index[log.status == "complete"]
+        task_bool = task_bool & df.index.isin(completes)
+
+    return df[~task_bool]
