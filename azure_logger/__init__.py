@@ -70,7 +70,7 @@ class CsvLogger(Logger):
             formatter, container_client, path, overwrite=overwrite
         )
 
-        #        self.addHandler(handler)
+        self.addHandler(handler)
         #
         #        consoleHandler = StreamHandler(sys.stdout)
         #        consoleHandler.setFormatter(formatter)
