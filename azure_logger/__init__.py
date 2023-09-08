@@ -76,7 +76,7 @@ class CsvLogger(Logger):
         #        consoleHandler.setFormatter(formatter)
         #        self.addHandler(consoleHandler)
         #
-        #        self.setLevel(DEBUG)
+        self.setLevel(DEBUG)
         if header and not appending:
             handler.write(header)
 
