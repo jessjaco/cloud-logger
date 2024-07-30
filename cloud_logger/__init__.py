@@ -1,15 +1,18 @@
-import sys
-
 from ast import literal_eval
 from logging import Formatter, Handler, Logger, INFO
-from typing import Union
+from typing import Callable
 
 from azure.storage.blob import ContainerClient
 import pandas as pd
 import s3fs
 
 
-class AzureAppendBlobHandler(Handler):
+class CloudHandler(Handler):
+    def log_exists(self):
+        pass
+
+
+class AzureAppendBlobHandler(CloudHandler):
     def __init__(
         self,
         formatter: Formatter,
@@ -24,6 +27,10 @@ class AzureAppendBlobHandler(Handler):
         self._blob_client = container_client.get_blob_client(path)
         if not self._blob_client.exists() or overwrite:
             self._blob_client.create_append_blob()
+        self.path = self._blob_client.url
+
+    def log_exists(self):
+        return self._blob_client.exists
 
     def emit(self, data):
         self.write(self.format(data))
@@ -32,18 +39,20 @@ class AzureAppendBlobHandler(Handler):
         self._blob_client.append_block(data)
 
 
-class S3AppendBlobHandler(Handler):
+class S3Handler(CloudHandler):
     def __init__(
-        self,
-        formatter: Formatter,
-        path: str,
-        overwrite: bool = False,
+        self, formatter: Formatter, path: str, overwrite: bool = False, **kwargs
     ):
         super().__init__()
 
         self.formatter = formatter
         self._path = path
-        self._s3 = s3fs.S3FileSystem(anon=False)
+        self._s3 = s3fs.S3FileSystem(anon=False, **kwargs)
+        if overwrite and self.log_exists():
+            self._s3.rm_file(path)
+
+    def log_exists(self):
+        return self._s3.exists(self._path)
 
     def emit(self, data):
         self.write(self.format(data))
@@ -72,42 +81,38 @@ class CsvLogger(Logger):
     def __init__(
         self,
         name: str,
-        container_client: ContainerClient,
         path: str,
         overwrite: bool = True,
-        header: Union[str, None] = None,
+        header: str | None = None,
         fmt: str = "%(asctime)s|%(message)s\n",
         datefmt: str = "%Y-%m-%d %H:%M:%S",
         delimiter: str = "|",
+        cloud_handler: Callable = AzureAppendBlobHandler,
+        **kwargs
     ):
         super().__init__(name)
 
-        self.container_client = container_client
         self.delimiter = delimiter
         self.path = path
 
         formatter = CsvFormatter(fmt, datefmt, delimiter=delimiter)
-        appending = container_client.get_blob_client(path).exists() and not overwrite
-        handler = AzureAppendBlobHandler(
-            formatter, container_client, path, overwrite=overwrite
-        )
+        handler = cloud_handler(formatter, path, overwrite=overwrite, **kwargs)
+        self.cloud_handler = handler
 
         self.addHandler(handler)
         self.setLevel(INFO)
+        appending = self.cloud_handler.log_exists and not overwrite
         if header and not appending:
             handler.write(header)
 
     def parse_log(self) -> pd.DataFrame:
-        blob_client = self.container_client.get_blob_client(self.path)
-        return pd.read_csv(blob_client.url, sep=self.delimiter, skipinitialspace=True)
+        return pd.read_csv(
+            self.cloud_handler.path, sep=self.delimiter, skipinitialspace=True
+        )
 
     def filter_by_log(self, df: pd.DataFrame) -> pd.DataFrame:
-        # Need to decide if this is where we do this. I want to keep the logger
-        # fairly generic. Suppose we could subclass it.
         log = self.parse_log().set_index("index")
         log.index = [literal_eval(i) for i in log.index]
-
-        # Need to filter by errors
 
         return df[~df.index.isin(log.index)]
 
