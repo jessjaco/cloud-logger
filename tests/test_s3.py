@@ -1,7 +1,5 @@
 from logging import Formatter, Logger
 
-import s3fs
-
 from cloud_logger import S3Handler, CsvLogger
 
 
