@@ -46,19 +46,19 @@ class S3Handler(CloudHandler):
         super().__init__()
 
         self.formatter = formatter
-        self._path = path
+        self.path = f"s3://{path}"
         self._s3 = s3fs.S3FileSystem(anon=False, **kwargs)
         if overwrite and self.log_exists():
             self._s3.rm_file(path)
 
     def log_exists(self):
-        return self._s3.exists(self._path)
+        return self._s3.exists(self.path)
 
     def emit(self, data):
         self.write(self.format(data))
 
     def write(self, data):
-        with self._s3.open(self._path, "a") as f:
+        with self._s3.open(self.path, "a") as f:
             f.write(data)
 
 
@@ -88,7 +88,7 @@ class CsvLogger(Logger):
         datefmt: str = "%Y-%m-%d %H:%M:%S",
         delimiter: str = "|",
         cloud_handler: Callable = AzureAppendBlobHandler,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(name)
 
@@ -101,11 +101,11 @@ class CsvLogger(Logger):
 
         self.addHandler(handler)
         self.setLevel(INFO)
-        appending = self.cloud_handler.log_exists and not overwrite
+        appending = self.cloud_handler.log_exists() and not overwrite
         if header and not appending:
             handler.write(header)
 
-    def parse_log(self) -> pd.DataFrame:
+    def parse_log(self) -> pd.DataFrame | None:
         return pd.read_csv(
             self.cloud_handler.path, sep=self.delimiter, skipinitialspace=True
         )
