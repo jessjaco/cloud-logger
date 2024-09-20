@@ -2,6 +2,7 @@ from ast import literal_eval
 from logging import Formatter, Handler, Logger, INFO
 from typing import Callable
 
+from aiobotocore.session import AioSession
 from azure.storage.blob import ContainerClient
 import pandas as pd
 import s3fs
@@ -87,7 +88,7 @@ class CsvLogger(Logger):
         fmt: str = "%(asctime)s|%(message)s\n",
         datefmt: str = "%Y-%m-%d %H:%M:%S",
         delimiter: str = "|",
-        cloud_handler: Callable = AzureAppendBlobHandler,
+        cloud_handler: Callable = S3Handler,
         **kwargs,
     ):
         super().__init__(name)
