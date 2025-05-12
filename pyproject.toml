@@ -10,7 +10,7 @@ packages = [{include = "cloud_logger"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 azure-storage-blob = ">=12"
-s3fs = "^2024.6.1"
+s3fs = ">=2024.6.1"
 pandas = "^2.2.2"
 
 
