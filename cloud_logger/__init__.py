@@ -88,6 +88,7 @@ class CsvLogger(Logger):
         fmt: str = "%(asctime)s|%(message)s\n",
         datefmt: str = "%Y-%m-%d %H:%M:%S",
         delimiter: str = "|",
+        parse_index: bool = True,
         cloud_handler: Callable = S3Handler,
         **kwargs,
     ):
@@ -95,6 +96,7 @@ class CsvLogger(Logger):
 
         self.delimiter = delimiter
         self.path = path
+        self.parse_index = parse_index
 
         formatter = CsvFormatter(fmt, datefmt, delimiter=delimiter)
         handler = cloud_handler(formatter, path, overwrite=overwrite, **kwargs)
@@ -113,18 +115,23 @@ class CsvLogger(Logger):
 
     def filter_by_log(self, df: pd.DataFrame) -> pd.DataFrame:
         log = self.parse_log().set_index("index")
-        log.index = [literal_eval(i) for i in log.index]
+        if self.parse_index:
+            log.index = [literal_eval(i) for i in log.index]
 
         return df[~df.index.isin(log.index)]
 
 
 def filter_by_log(
-    df: pd.DataFrame, log: pd.DataFrame, retry_errors: bool = True
+    df: pd.DataFrame,
+    log: pd.DataFrame,
+    retry_errors: bool = True,
+    parse_index: bool = True,
 ) -> pd.DataFrame:
     # Need to decide if this is where we do this. I want to keep the logger
     # fairly generic. Suppose we could subclass it.
     log = log.set_index("index")
-    log.index = [literal_eval(i) for i in log.index]
+    if parse_index:
+        log.index = [literal_eval(i) for i in log.index]
 
     task_bool = df.index.isin(log.index)
 
