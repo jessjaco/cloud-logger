@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cloud-logger"
-version = "0.2.0"
+version = "0.2.1"
 description = "A simple logger to write to s3 or azure blob storage"
 authors = ["Jesse Anderson <jesse.anderson@gmail.com>"]
 license = "MIT"
