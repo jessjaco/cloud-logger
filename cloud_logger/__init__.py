@@ -125,18 +125,32 @@ def filter_by_log(
     df: pd.DataFrame,
     log: pd.DataFrame,
     retry_errors: bool = True,
-    parse_index: bool = True,
+    non_error_statuses: list[str] = ["complete"],
 ) -> pd.DataFrame:
-    # Need to decide if this is where we do this. I want to keep the logger
-    # fairly generic. Suppose we could subclass it.
-    log = log.set_index("index")
-    if parse_index:
-        log.index = [literal_eval(i) for i in log.index]
+    """Filter a dataframe by a log.
 
-    task_bool = df.index.isin(log.index)
+    The index of the dataframe should correspond to the "index" column of the log.
+
+    Args:
+        df: The dataframe to filter.
+        log: The log to use to filter the dataframe.
+        retry_errors: Whether to retry errors or not.
+        non_error_statuses: Values of log.status that are not considered errors.
+
+    Returns:
+        The filtered dataframe.
+
+    """
+    # Reindex and parse index values (assuming stringified tuples)
+    log = log.set_index("index")
+    log.index = [literal_eval(i) for i in log.index]
 
     if retry_errors:
-        completes = log.index[log.status == "complete"]
-        task_bool = task_bool & df.index.isin(completes)
+        # Exclude only successfully completed tasks / retry errors
+        completed = log[log.status.isin(non_error_statuses)].index
+        things_to_remove = df.index.isin(completed)
+    else:
+        # Exclude everything that appears in the log (complete or error)
+        things_to_remove = df.index.isin(log.index)
 
-    return df[~task_bool]
+    return df[~things_to_remove]
