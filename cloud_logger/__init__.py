@@ -50,7 +50,9 @@ class S3Handler(CloudHandler):
         self.path = f"s3://{path}"
         self._s3 = s3fs.S3FileSystem(anon=False, **kwargs)
         if overwrite and self.log_exists():
-            self._s3.rm_file(path)
+            # Empty the log instead of deleting it, since writing only needs
+            # s3:PutObject while deleting also needs s3:DeleteObject.
+            self._s3.pipe_file(self.path, b"")
 
     def log_exists(self):
         return self._s3.exists(self.path)
