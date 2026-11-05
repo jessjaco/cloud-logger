@@ -21,6 +21,16 @@ def test_CsvLogger():
     logger = CsvLogger(
         "test", path="dep-cl/test_logger.txt", cloud_handler=S3Handler, overwrite=True
     )
-    assert not logger.cloud_handler.log_exists()
     logger.info("test")
     assert logger.cloud_handler.log_exists()
+
+
+def test_CsvLogger_overwrite_empties_log():
+    path = "dep-cl/test_logger_overwrite.txt"
+    first = CsvLogger("first", path=path, cloud_handler=S3Handler, overwrite=True)
+    first.info("old entry")
+
+    second = CsvLogger(
+        "second", path=path, cloud_handler=S3Handler, overwrite=True, header="h\n"
+    )
+    assert second.cloud_handler._s3.cat_file(second.cloud_handler.path) == b"h\n"
